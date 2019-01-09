@@ -168,18 +168,18 @@ p_gender = matrix(nrow = nrow(train), ncol = 2)
 
 set.seed(111)
 for(i in 1:nfolds){
-  
+
   ## train / validation index
   inTr = which(train$fold != i)
   inTe = which(train$fold == i)
-  
+
   ## response
   y = train$gender
-  
+
   ## xgb data
   dtr = xgb.DMatrix(xtrain[inTr,], label = y[inTr], missing = NA)
   dval = xgb.DMatrix(xtrain[inTe,], label = y[inTe], missing = NA)
-  
+
   ## parameter set
   param = list(booster            = 'gbtree',
                objective          = 'reg:logistic',
@@ -189,27 +189,27 @@ for(i in 1:nfolds){
                subsample          = 0.8,
                colsample_bytree   = 0.5,
                colsample_bylevel  = 0.5)
-  
+
   p = numeric(length(inTe))
   for(j in 1:nbags){
     ## train model
     bst_gender = xgb.train(params   = param,
                            data     = dtr,
-                           nrounds  = 1000) 
-    
+                           nrounds  = 1000)
+
     ## prediction
     p = p + predict(bst_gender, dval)
-    
+
     rm(bst_gender)
     gc()
   }
 
   ## average predictions
-  p = p/nbags  
+  p = p/nbags
 
   prob = cbind(1-p, p)
   p_gender[inTe,] = prob
-  
+
   ## calculate score
   score = mlogloss(y[inTe], prob)
   cat('Gender fold', i, '- Score', round(score,6), '\n')
@@ -219,7 +219,7 @@ score = mlogloss(y, p_gender)
 cat('Gender total score', round(score,6), '\n')
 
 #---------------------------------------------------------------------------------
-# cross validation age group for devices with events 
+# cross validation age group for devices with events
 #---------------------------------------------------------------------------------
 
 p_age_group = matrix(nrow = nrow(train), ncol = 12)
@@ -228,26 +228,26 @@ gender = train$gender
 
 set.seed(222)
 for(i in 1:nfolds){
-  
+
   ## train / validation index
   inTr = which(train$fold != i)
   inTe = which(train$fold == i)
 
   ## response
   y = train$age_group
-  
+
   ## add gender
-  
+
   ## create modified val data
   idx = rep(inTe, each = 2)
   xval_mod = xtrain[idx,]
   xval_mod = cbind(rep(0:1, length(inTe)), xval_mod)
-  
+
   ## xgb data
   dtr = xgb.DMatrix(cbind(gender[inTr], xtrain[inTr,]), label = y[inTr], missing = NA)
   dval = xgb.DMatrix(cbind(gender[inTe], xtrain[inTe,]), label = y[inTe], missing = NA)
   dval_mod = xgb.DMatrix(xval_mod, missing = NA)
-  
+
   ## parameter set
   param = list(booster            = 'gbtree',
                objective          = 'multi:softprob',
@@ -258,7 +258,7 @@ for(i in 1:nfolds){
                subsample          = 0.8,
                colsample_bytree   = 0.5,
                colsample_bylevel  = 0.5)
-  
+
   prob = matrix(0, nrow = length(inTe), ncol = 12)
   prob_tmp = matrix(0, nrow = length(inTe), ncol = 6)
   for(j in 1:nbags){
@@ -266,11 +266,11 @@ for(i in 1:nfolds){
     bst_age_group = xgb.train(params   = param,
                               data     = dtr,
                               nrounds  = 1060)
-    
+
     ## prediction
     prob = prob + matrix(predict(bst_age_group, dval_mod), ncol = 12, byrow = TRUE)
     prob_tmp = prob_tmp + matrix(predict(bst_age_group, dval), ncol = 6, byrow = TRUE)
-    
+
     rm(bst_age_group)
     gc()
   }
@@ -278,10 +278,10 @@ for(i in 1:nfolds){
   ## average predictions
   prob = prob/nbags
   prob_tmp = prob_tmp/nbags
-  
+
   p_age_group[inTe,] = prob
-  
-  ## calculate score  
+
+  ## calculate score
   score = mlogloss(y[inTe], prob_tmp)
   cat('Age_group fold', i, '- Score', round(score,6), '\n')
 }
