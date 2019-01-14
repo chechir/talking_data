@@ -6,11 +6,11 @@ myseed=718
 # actual: integer vector with truth labels, values range from 0 to n - 1 classes
 # pred_m: predicted probs: column 1 => label 0, column 2 => label 1 and so on
 mlogloss = function(actual, pred_m, eps = 1e-15){
-  
+
   if(max(actual) >= ncol(pred_m) || min(actual) < 0){
     stop(cat('True labels should range from 0 to', ncol(pred_m) - 1, '\n'))
   }
-  
+
   pred_m[pred_m > 1 - eps] = 1 - eps
   pred_m[pred_m < eps] = eps
   pred_m = t(apply(pred_m, 1, function(r)r/sum(r)))
@@ -57,13 +57,12 @@ sum(super_more$device_id !=label$device_id) ## Must be zero!
 fillNA <- function(x) ifelse(is.na(x), -1, x)
 cutQuantile <- function(x, n = 20) cut(x, c(-Inf, unique(quantile(x, 1:(n - 1)/ n)), Inf))
 
-for(f in c("class", "inform", "unknown", "health", "game", 
-           "date_diff", "babi", "bank", "high", "low", "servic", 
-           "X0", "X1", "X2", "comic", "mean_lat", "car", "financi", "mean_lon", 
+for(f in c("class", "inform", "unknown", "health", "game",
+           "date_diff", "babi", "bank", "high", "low", "servic",
+           "X0", "X1", "X2", "comic", "mean_lat", "car", "financi", "mean_lon",
            "travel", "shop", "fund", "sport", "share", "educ", "hotel", "napps")) {
   super_more[,f]<-fillNA(super_more[,f])
   label[,f]=as.character(cutQuantile(super_more[,f]))
-  
 }
 
 
@@ -71,7 +70,7 @@ for(i in c('phone_brand', 'device_model')){
   if(!is.numeric(super_more[,i])){
     freq = data.frame(table(super_more[,i]))
     freq = freq[order(freq$Freq, decreasing = TRUE),]
-    
+
     super_more[,i] = as.numeric(match(super_more[,i], freq$Var1))
   }
 }
@@ -138,19 +137,19 @@ device_apps <- device_event_apps[,list(apps=f_split_paste(apps)),by="device_id"]
 
 # #primero crea una lista por cada row con apps:
 # strsplit(device_event_apps$apps[1:5],',')
-# 
+#
 # #Luego pone todas las apps juntas.. o_O. Por cada device_id (por el group by de después):
 # unlist(strsplit(device_event_apps$apps[1:5],','))
-# 
+#
 # #y luego sava los unique
 # unique(unlist(strsplit(device_event_apps$apps[1:5],',')))
-# 
+#
 # #Luego aplica todo con un group_by por device:- Acá es lo mismo pero sin llamar a una funcón-
 #device_apps5 <- device_event_apps[,list(apps=paste(unique(unlist(strsplit(apps,','))), collapse=",")),by="device_id"]
 #str(device_apps5)
 
 ##Recordatorio:
-#las apps quedaron de manera de que cada registro tiene todos los códigos de apps separados por coma. 
+#las apps quedaron de manera de que cada registro tiene todos los códigos de apps separados por coma.
 device_apps$apps[3]
 
 rm(device_event_apps,f_split_paste);gc()
@@ -159,11 +158,9 @@ rm(device_event_apps,f_split_paste);gc()
 tmp <- strsplit(device_apps$apps,",")
 
 
-device_apps <- data.table(device_id=rep(device_apps$device_id,      
+device_apps <- data.table(device_id=rep(device_apps$device_id,
                                         times=sapply(tmp,length)),  # n apps distintas
                           app_id=unlist(tmp)) #unlist tmp will be the same as nrow of device_apps!
-
-
 
 # dummy
 d1 <- label1[,list(device_id,phone_brand)]
@@ -330,28 +327,24 @@ for (fold.id in 1:n.fold) {
   cat("Starting fold ", fold.id, "\n")
   train.id <- fold.id != fold
   valid.id <- fold.id == fold
-  
   train.id.ne<- fold.id != fold & !with_events[idx_train]
   train.id.we<- fold.id != fold & with_events[idx_train]
-  
   valid.id.ne <- fold.id == fold & !with_events[idx_train]
   valid.id.we <- fold.id == fold & with_events[idx_train]
-  
   #length(train.id)+length(valid.id)
-  
+
   tmp_cnt_train <- colSums(train_data)
-  
   print(Sys.time())
 
   # XGB model 1 - gbtree #####################################
   ##Only brand and model data
   features=grep('(brand)|(model)',colnames(train_data), value=T)
-  
+
   dtrain <- xgb.DMatrix(train_data[train.id,features],label=train_label[train.id],missing=NA)
   dvalid <- xgb.DMatrix(train_data[valid.id.ne,features],label=train_label[valid.id.ne],missing=NA)
   #dtest <- xgb.DMatrix(test_data,missing=NA)
   watchlist <- list(valid=dvalid,train=dtrain)
-  
+
   param <- list(booster="gbtree",
                 num_class=length(group_name),
                 objective="multi:softprob",
@@ -362,33 +355,31 @@ for (fold.id in 1:n.fold) {
                 colsample_bytree=0.7,subsample=0.7,
                 max_depth=8,
                 alpha=2)
-  
   ntree <- 465 #valid-mlogloss:2.388124	train-mlogloss:2.373190
   set.seed(myseed)
-  
+
   for(j in 1:nbags){
     fit_xgb <- xgb.train(params=param,
                          data=dtrain,
                          nrounds=ntree,
                          watchlist=watchlist,
                          verbose=1, print.every.n=40)
-    
+
     #Predict only with no events:
     preds[valid.id.ne,1:12] = preds[valid.id.ne,1:12] + matrix(predict(fit_xgb, dvalid), ncol = 12, byrow = TRUE)
   }
   preds[valid.id.ne,1:12] = preds[valid.id.ne,1:12]/nbags
   score_val=mlogloss(train_label[valid.id.ne],  preds[valid.id.ne,1:12])
   cat("No events for fold", fold.id, score_val, "\n")
-  
+
   #########################################
   # Training all, predicting with events
   #########################################
-  
   dtrain <- xgb.DMatrix(train_data[train.id,],label=train_label[train.id],missing=NA)
   dvalid <- xgb.DMatrix(train_data[valid.id.we,],label=train_label[valid.id.we],missing=NA)
   #dtest <- xgb.DMatrix(test_data,missing=NA)
   watchlist <- list(valid=dvalid,train=dtrain)
-  
+
   param <- list(booster="gbtree",
                 num_class=length(group_name),
                 objective="multi:softprob",
@@ -399,7 +390,7 @@ for (fold.id in 1:n.fold) {
                 colsample_bytree=0.7,subsample=0.7,
                 max_depth=8,
                 alpha=1)
-  
+
   ntree <- 1320 #1414, valid-mlogloss:2.267193	train-mlogloss:1.964427
   set.seed(myseed)
   for(j in 1:nbags){
@@ -416,15 +407,15 @@ for (fold.id in 1:n.fold) {
   cat("WITH events for fold", fold.id, score_val, "\n")
 }
 
-#Overall no events: 
+#Overall no events:
 score_val=mlogloss(train_label[!with_events[idx_train]],  preds[!with_events[idx_train],1:12])
 cat("Overall no events:", fold.id, score_val, "\n")
 
-#Overall WITH events: 
+#Overall WITH events:
 score_val=mlogloss(train_label[with_events[idx_train]],  preds[with_events[idx_train],1:12])
 cat("Overall WITH events:", fold.id, score_val, "\n")
 
-#Final CV score: 
+#Final CV score:
 score_val=mlogloss(train_label,  preds[,1:12])
 cat("Overall", fold.id, score_val, "\n")
 
@@ -460,7 +451,7 @@ for(j in 1:nbags){
                        nrounds=ntree,
                        watchlist=watchlist,
                        verbose=1, print.every.n=40)
-  
+
   #Predict only with no events:
   predsTest[test.id.ne,1:12] = predsTest[test.id.ne,1:12] + matrix(predict(fit_xgb, dtest), ncol = 12, byrow = TRUE)
 }
@@ -513,20 +504,19 @@ colnames(test_pred)[1:13]=c("device_id",group_name)
 write.csv(train_pred, file = 'preds/cv5_shityXgb_1hot_d1-d31_bagged_train.R.csv', row.names = FALSE, quote = FALSE)
 write.csv(test_pred, file = 'preds/cv5_shityXgb_1hot_d1-d31_bagged_test.R.csv', row.names = FALSE, quote = FALSE)
 
-# 
 # dat=fread("cv5_shityXgb_1hot_d1-d31_bagged_test.R.csv")
 # dat$with_events=NULL
 # write.csv(dat, file = 'cv5_shityXgb_1hot_d1-d31_bagged_test.R.submit.csv', row.names = FALSE, quote = FALSE)
 
-#Final CV score: 
+#Final CV score:
 score_val=mlogloss(train_label,  preds[,1:12])
 cat("Overall",  score_val, "\n")
-# Overall 2.27661 
+# Overall 2.27661
 
 score_val=mlogloss(train_label[with_events[idx_train]],  preds[with_events[idx_train],1:12])
 cat("With events",  score_val, "\n")
-#With events 2.00836 
+#With events 2.00836
 
 score_val=mlogloss(train_label[!with_events[idx_train]],  preds[!with_events[idx_train],1:12])
 cat("No events",  score_val, "\n")
-#No events 2.398477 
+#No events 2.398477

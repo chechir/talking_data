@@ -52,7 +52,7 @@ gc()
 cor_lab <- corpus(labls$category)
 dfm_lab <- dfm(cor_lab, removeTwitter=TRUE, verbose=FALSE, stem = TRUE, ignoredFeatures=stopwords("english"))
 
-## Using only top 15 labels in terms of frequency 
+## Using only top 15 labels in terms of frequency
 words<-names(topfeatures(dfm_lab, 20))
 
 labls<-cbind(labls, as.data.frame(dfm_lab[,words]))
@@ -62,26 +62,26 @@ labls$label_id<- labls$category<- NULL
 
 
 labls<- group_by(labls, app_id) %>%
-    summarise(unknown=sum(unknown), 
-              game=sum(game), 
-              travel=sum(travel), 
-              shop=sum(shop), 
+    summarise(unknown=sum(unknown),
+              game=sum(game),
+              travel=sum(travel),
+              shop=sum(shop),
               car=sum(car),
               servic=sum(servic),
-              babi=sum(babi), 
-              comic=sum(comic), 
-              fund=sum(fund), 
-              bank=sum(bank), 
-              high=sum( high), 
+              babi=sum(babi),
+              comic=sum(comic),
+              fund=sum(fund),
+              bank=sum(bank),
+              high=sum( high),
               low=sum(low),
               sport=sum(educ),
               share=sum(share),
-              educ=sum(educ), 
-              class=sum(class), 
-              inform=sum(inform), 
-              financi=sum(financi), 
-              hotel=sum(hotel), 
-              health=sum(health), 
+              educ=sum(educ),
+              class=sum(class),
+              inform=sum(inform),
+              financi=sum(financi),
+              hotel=sum(hotel),
+              health=sum(health),
               nlab=n())
 labls<-as.data.frame(unique(labls))
 
@@ -102,21 +102,21 @@ event_calc<- group_by(detail, event_id) %>%
     summarise(installed=sum(is_installed, na.rm=T),
               active=sum(is_active, na.rm=T),
               napps=n_distinct(app_id),
-              unknown=sum(unknown, na.rm = T), 
-              game=sum(game, na.rm = T), 
-              travel=sum(travel, na.rm = T), 
-              shop=sum(shop, na.rm = T), 
+              unknown=sum(unknown, na.rm = T),
+              game=sum(game, na.rm = T),
+              travel=sum(travel, na.rm = T),
+              shop=sum(shop, na.rm = T),
               car=sum(car, na.rm = T),
               servic=sum(servic, na.rm = T),
-              babi=sum(babi, na.rm = T), 
-              comic=sum(comic, na.rm = T), 
-              fund=sum(fund, na.rm = T), 
-              bank=sum(bank, na.rm = T), 
-              high=sum(high, na.rm = T), 
+              babi=sum(babi, na.rm = T),
+              comic=sum(comic, na.rm = T),
+              fund=sum(fund, na.rm = T),
+              bank=sum(bank, na.rm = T),
+              high=sum(high, na.rm = T),
               low=sum(low, na.rm = T),
               sport=sum(educ, na.rm = T),
               share=sum(share, na.rm = T),
-              educ=sum(educ, na.rm = T), 
+              educ=sum(educ, na.rm = T),
               class=sum(class, na.rm = T),
               inform=sum(inform, na.rm = T),
               financi=sum(financi, na.rm = T),
@@ -136,9 +136,9 @@ event_calc<-left_join(event_calc, events, by="event_id")
 
 ## Summarizing to match device level
 device_calc<- group_by(event_calc, device_id) %>%
-    summarise(mean_lat=mean(latitude, na.rm=T), 
-              sd_lat=sd(latitude, na.rm=T), 
-              mean_lon=mean(longitude, na.rm=T), 
+    summarise(mean_lat=mean(latitude, na.rm=T),
+              sd_lat=sd(latitude, na.rm=T),
+              mean_lon=mean(longitude, na.rm=T),
               sd_lon=sd(longitude, na.rm=T),
               mean_hour=mean(hour, na.rm=T),
               sd_hour=sd(hour, na.rm=T),
@@ -148,21 +148,21 @@ device_calc<- group_by(event_calc, device_id) %>%
               max_date=max(timestamp, na.rm=T),
               napps=sum(napps),
               nevents=n_distinct(event_id),
-              unknown=sum(unknown, na.rm = T), 
-              game=sum(game, na.rm = T), 
-              travel=sum(travel, na.rm = T), 
-              shop=sum(shop, na.rm = T), 
+              unknown=sum(unknown, na.rm = T),
+              game=sum(game, na.rm = T),
+              travel=sum(travel, na.rm = T),
+              shop=sum(shop, na.rm = T),
               car=sum(car, na.rm = T),
               servic=sum(servic, na.rm = T),
-              babi=sum(babi, na.rm = T), 
-              comic=sum(comic, na.rm = T), 
-              fund=sum(fund, na.rm = T), 
-              bank=sum(bank, na.rm = T), 
-              high=sum( high, na.rm = T), 
+              babi=sum(babi, na.rm = T),
+              comic=sum(comic, na.rm = T),
+              fund=sum(fund, na.rm = T),
+              bank=sum(bank, na.rm = T),
+              high=sum( high, na.rm = T),
               low=sum(low, na.rm = T),
               sport=sum(educ, na.rm = T),
               share=sum(share, na.rm = T),
-              educ=sum(educ, na.rm = T), 
+              educ=sum(educ, na.rm = T),
               class=sum(class, na.rm = T),
               inform=sum(inform, na.rm = T),
               financi=sum(financi, na.rm = T),
@@ -182,7 +182,7 @@ brands <- fread('./input/phone_brand_device_model.csv')
 
 # Brands have duplicated rows!. Let's remove them:
 brands<-group_by(brands, device_id) %>%
-    summarise(phone_brand=min(phone_brand), 
+    summarise(phone_brand=min(phone_brand),
               device_model=min(device_model))
 
 
@@ -235,5 +235,3 @@ colnames(test)<-make.names(colnames(test))
 
 saveRDS(train, 'rds/trainx2_20160728')
 saveRDS(test, 'rds/testx2_20160728')
-
-

@@ -364,7 +364,6 @@ del events
 
 
 ####Phone brand
-#
 def get_hash_data(train, test):
     df = pd.concat((train, test), axis=0, ignore_index=True)
     split_len = len(train)

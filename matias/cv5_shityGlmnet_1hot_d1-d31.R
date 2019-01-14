@@ -6,11 +6,11 @@ myseed=718
 # actual: integer vector with truth labels, values range from 0 to n - 1 classes
 # pred_m: predicted probs: column 1 => label 0, column 2 => label 1 and so on
 mlogloss = function(actual, pred_m, eps = 1e-15){
-  
+
   if(max(actual) >= ncol(pred_m) || min(actual) < 0){
     stop(cat('True labels should range from 0 to', ncol(pred_m) - 1, '\n'))
   }
-  
+
   pred_m[pred_m > 1 - eps] = 1 - eps
   pred_m[pred_m < eps] = eps
   pred_m = t(apply(pred_m, 1, function(r)r/sum(r)))
@@ -39,7 +39,6 @@ label_test$gender <- label_test$age <- label_test$group <- NA
 label <- rbind(label_train,label_test)
 
 #une a nivel de super mejor:
-
 train_more<-readRDS('rds/trainx2_20160728')
 test_more<-readRDS('rds/testx2_20160728')
 
@@ -57,13 +56,12 @@ sum(super_more$device_id !=label$device_id) ## Must be zero!
 fillNA <- function(x) ifelse(is.na(x), -1, x)
 cutQuantile <- function(x, n = 40) cut(x, c(-Inf, unique(quantile(x, 1:(n - 1)/ n)), Inf))
 
-for(f in c("class", "inform", "unknown", "health", "game", 
-           "date_diff", "babi", "bank", "high", "low", "servic", 
-           "X0", "X1", "X2", "comic", "mean_lat", "car", "financi", "mean_lon", 
+for(f in c("class", "inform", "unknown", "health", "game",
+           "date_diff", "babi", "bank", "high", "low", "servic",
+           "X0", "X1", "X2", "comic", "mean_lat", "car", "financi", "mean_lon",
            "travel", "shop", "fund", "sport", "share", "educ", "hotel", "napps")) {
   super_more[,f]<-fillNA(super_more[,f])
   label[,f]=as.character(cutQuantile(super_more[,f]))
-  
 }
 
 
@@ -71,7 +69,7 @@ for(i in c('phone_brand', 'device_model')){
   if(!is.numeric(super_more[,i])){
     freq = data.frame(table(super_more[,i]))
     freq = freq[order(freq$Freq, decreasing = TRUE),]
-    
+
     super_more[,i] = as.numeric(match(super_more[,i], freq$Var1))
   }
 }
@@ -138,19 +136,19 @@ device_apps <- device_event_apps[,list(apps=f_split_paste(apps)),by="device_id"]
 
 # #primero crea una lista por cada row con apps:
 # strsplit(device_event_apps$apps[1:5],',')
-# 
+#
 # #Luego pone todas las apps juntas.. o_O. Por cada device_id (por el group by de después):
 # unlist(strsplit(device_event_apps$apps[1:5],','))
-# 
+#
 # #y luego sava los unique
 # unique(unlist(strsplit(device_event_apps$apps[1:5],',')))
-# 
+#
 # #Luego aplica todo con un group_by por device:- Acá es lo mismo pero sin llamar a una funcón-
 #device_apps5 <- device_event_apps[,list(apps=paste(unique(unlist(strsplit(apps,','))), collapse=",")),by="device_id"]
 #str(device_apps5)
 
 ##Recordatorio:
-#las apps quedaron de manera de que cada registro tiene todos los códigos de apps separados por coma. 
+#las apps quedaron de manera de que cada registro tiene todos los códigos de apps separados por coma.
 device_apps$apps[3]
 
 rm(device_event_apps,f_split_paste);gc()
@@ -159,11 +157,9 @@ rm(device_event_apps,f_split_paste);gc()
 tmp <- strsplit(device_apps$apps,",")
 
 
-device_apps <- data.table(device_id=rep(device_apps$device_id,      
+device_apps <- data.table(device_id=rep(device_apps$device_id,
                                         times=sapply(tmp,length)),  # n apps distintas
                           app_id=unlist(tmp)) #unlist tmp will be the same as nrow of device_apps!
-
-
 
 # dummy
 d1 <- label1[,list(device_id,phone_brand)]
@@ -339,40 +335,30 @@ for (fold.id in 1:n.fold) {
   cat("Starting fold ", fold.id, "\n")
   train.id <- fold.id != fold
   valid.id <- fold.id == fold
-  
   train.id.ne<- fold.id != fold & !with_events[idx_train]
   train.id.we<- fold.id != fold & with_events[idx_train]
-  
   valid.id.ne <- fold.id == fold & !with_events[idx_train]
   valid.id.we <- fold.id == fold & with_events[idx_train]
-  
   #length(train.id)+length(valid.id)
-  
   print(Sys.time())
-  
   # GLMNET #####################################
   ##Only brand and model data - NO EVENTS
-  
-  
   print(Sys.time())
   trLog = glmnet(x=train_data[train.id,features],
                  y=Yvals[train.id], family = "multinomial", alpha=0.45)#0.8141108 (0.5)
-  
-  
+
   predGlm=predict(trLog, train_data[valid.id.ne,features], type="response")[,,31]
   preds[valid.id.ne,1:12]=predGlm
   cat("loglossGlm", fold.id, mlogloss(as.numeric(Yvals[valid.id.ne])-1, predGlm))
-  
-  
+
   ##aLL data - WITH EVENTS
   trLog = glmnet(x=train_data[train.id,],
                  y=Yvals[train.id], family = "multinomial", alpha=0.45)#0.8141108 (0.5)
-  
-  
+
   predGlm=predict(trLog, train_data[valid.id.we,], type="response")[,,32]
   preds[valid.id.we,1:12]=predGlm
   cat("loglossGlm", fold.id, mlogloss(as.numeric(Yvals[valid.id.we])-1, predGlm))
-  
+
   #oVERALL sCORE
   score_val=mlogloss(train_label[valid.id],  preds[valid.id,1:12])
   cat("Overall for fold", fold.id, score_val, "\n")
@@ -380,15 +366,15 @@ for (fold.id in 1:n.fold) {
 
 
 
-#Overall no events: 
+#Overall no events:
 score_val=mlogloss(train_label[!with_events[idx_train]],  preds[!with_events[idx_train],1:12])
 cat("Overall no events:", fold.id, score_val, "\n")
 
-#Overall WITH events: 
+#Overall WITH events:
 score_val=mlogloss(train_label[with_events[idx_train]],  preds[with_events[idx_train],1:12])
 cat("Overall WITH events:", fold.id, score_val, "\n")
 
-#Final CV score: 
+#Final CV score:
 score_val=mlogloss(train_label,  preds[,1:12])
 cat("Overall", fold.id, score_val, "\n")
 
