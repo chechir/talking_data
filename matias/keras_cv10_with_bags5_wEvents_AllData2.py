@@ -53,17 +53,17 @@ appevents = pd.read_csv(
 applabels = pd.read_csv(os.path.join(datadir, "app_labels.csv"))
 
 
-##Load the CV split.
+# #Load the CV split.
 # datadir = 'C:\\mthayer\\competition\\talkingData\\tdCode'
 folds = pd.read_csv(os.path.join(datadir, "folds_10.csv"), index_col="device_id")
 
-##Reorder train and cv so the device ids match afterwards
+# #Reorder train and cv so the device ids match afterwards
 gatrain = gatrain.sort_index()
 folds = folds.sort_index()
 
 print("validation, must be zero!", sum(gatrain.index != folds.index))
 
-####Phone brand
+# ###Phone brand
 # As preparation I create two columns that show which train or test set row a particular device_id belongs to.
 
 gatrain["trainrow"] = np.arange(gatrain.shape[0])
@@ -106,7 +106,7 @@ print(
 )
 
 ###############################################
-###MT work: Frequency term:
+# ##MT work: Frequency term:
 # model_freq = (phone
 #                 .groupby(['model'])['model'].count()
 #                 .to_frame())
@@ -549,7 +549,7 @@ targetencoder = LabelEncoder().fit(gatrain.group)
 y = targetencoder.transform(gatrain.group)
 nclasses = len(targetencoder.classes_)
 
-##Keras stuff
+# #Keras stuff
 dummy_y = np_utils.to_categorical(y)  ## Funcion de Keras!
 
 
@@ -561,7 +561,7 @@ def batch_generator(X, y, batch_size, shuffle):
     if shuffle:
         np.random.shuffle(sample_index)
     while True:
-        batch_index = sample_index[batch_size * counter : batch_size * (counter + 1)]
+        batch_index = sample_index[batch_size * counter: batch_size * (counter + 1)]
         X_batch = X[batch_index, :].toarray()
         y_batch = y[batch_index]
         counter += 1
@@ -577,7 +577,7 @@ def batch_generatorp(X, batch_size, shuffle):
     counter = 0
     sample_index = np.arange(X.shape[0])
     while True:
-        batch_index = sample_index[batch_size * counter : batch_size * (counter + 1)]
+        batch_index = sample_index[batch_size * counter: batch_size * (counter + 1)]
         X_batch = X[batch_index, :].toarray()
         counter += 1
         yield X_batch
