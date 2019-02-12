@@ -8,3 +8,8 @@ install.packages("xgboost")
 install.packages("Matrix")
 install.packages("quanteda")
 install.packages("bit64")
+
+install.packages("dtplyr")
+install.packages("caret")
+install.packages("glmnet")
+install.packages("Metrics")
