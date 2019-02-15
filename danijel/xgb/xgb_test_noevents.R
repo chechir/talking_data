@@ -58,7 +58,7 @@ gc()
 # xgb model - gender - logistic regression
 #---------------------------------------------------------------------------------
 
-nbags = 10
+nbags = 1
 p_gender = matrix(0, nrow = nrow(test), ncol = 2)
 
 ## features
@@ -99,19 +99,18 @@ for(i in 1:nbags){
   gc()
 }
 
-p_gender = p_gender/nbags
+p_gender = p_gender/nbags  # preds for test
 
 #---------------------------------------------------------------------------------
 # xgb model - age group - multinomial regression
 #---------------------------------------------------------------------------------
 
-nbags = 10
+nbags = 1
 p_age_group = matrix(0, nrow = nrow(test), ncol = 12)
 
 idx = rep(1:nrow(test), each = 2)
 test_mod = test[idx,]
-test_mod$gender = rep(0:1, nrow(test))
-
+test_mod$gender = rep(0:1, nrow(test))  # Here the test set is duplicated, one for Male and another for Female
 ## features
 features = c('phone_brand', 'device_model', 'has_events', 'gender')
 
@@ -145,6 +144,7 @@ for(i in 1:nbags){
                             xgb_model              = bst_tmp)
   
   ## prediction
+  ## Note that we predict for both: assuming gender Male and assuming gender Female
   p_age_group = p_age_group + matrix(predict(bst_age_group, as.matrix(test_mod[, features, with = FALSE])), 
                                      ncol = 12, byrow = TRUE)
   
