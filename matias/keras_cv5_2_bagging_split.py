@@ -638,7 +638,7 @@ print(
     )
 )
 
-for fold_id in xrange(1, n_folds + 1):
+for fold_id in range(1, n_folds + 1):
     # fold_id=1
     train_id = folds["fold"].values != fold_id
     valid_id = folds["fold"].values == fold_id
