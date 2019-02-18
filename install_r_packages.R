@@ -13,3 +13,6 @@ install.packages("dtplyr")
 install.packages("caret")
 install.packages("glmnet")
 install.packages("Metrics")
+install.packages("readr")
+
+

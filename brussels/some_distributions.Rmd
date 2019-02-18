@@ -1,0 +1,125 @@
+---
+title: "Distributions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting distribution
+
+Plots based on: https://www.kaggle.com/mmrosenb/talkingdata-eda
+
+```{r distributionsPrep}
+#imports
+library(ggplot2) # Data visualization
+library(readr) # CSVfile I/O, e.g. the read_csv function
+library(plyr) #for data management purposes
+library(dplyr) #for other data management purposes
+library(knitr)
+library(scales) #for scaling dates
+library(reshape2)
+library(data.table)
+library(ggplot2)
+library(lubridate)
+library(xgboost)
+library(Matrix)
+#globals
+indentWidth = .8 #for building barplots
+sigLev = 3 #for significant digits
+#plotting constants
+histBarGeom = (geom_bar(colour="black", fill="#DD8888", width=indentWidth,
+                 stat="identity")) #helper to clear up space
+#then plot with a multiplot function, adapted from
+#http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+```{r distributions}
+genderFrame = read_csv("../input/gender_age_train.csv")
+## load data
+load('../input/train.RData')
+load('../input/device.RData')
+load('../input/events.RData')
+
+## select fold10 and rename it to fold
+train$fold10 = NULL
+colnames(train)[5] = 'fold'
+
+## merging data
+train = merge(train, device, by = 'device_id', all.x = TRUE)
+app_events = merge(app_events, events[,.(event_id, device_id)], by = 'event_id', all.x = TRUE)
+
+## create numeric features
+train$group = as.numeric(factor(train$group)) - 1
+train$gender = ifelse(train$gender == 'F', 0, 1)
+train$phone_brand = as.numeric(factor(train$phone_brand))
+train$device_model = as.numeric(factor(train$device_model))
+
+## new features
+train$has_events = ifelse(train$device_id %in% app_events$device_id, 1, 0)
+
+#plot gender
+genderCountFrame = summarise(group_by(genderFrame,gender),count = n())
+genderCountFrame$density = genderCountFrame$count / sum(genderCountFrame$count)
+genderPlot = ggplot(data = genderCountFrame, aes(x=gender, y=density)) + 
+        histBarGeom + coord_flip() + guides(fill=FALSE) +
+        xlab("Gender") + ylab("Density") + ggtitle("Distribution of Gender")
+#plot age
+ageHist = ggplot(data=genderFrame, aes(genderFrame$age)) +
+            #get density
+            geom_histogram(aes(y = ..density..)) + geom_density() +
+            xlab("Age") + ggtitle("Distribution of\nUser Ages")
+#plot group categories
+groupCountFrame = summarise(group_by(genderFrame,group),count=n())
+groupCountFrame$density = groupCountFrame$count / sum(groupCountFrame$count)
+groupPlot = ggplot(data = groupCountFrame,aes(x=group,y=density)) +
+        histBarGeom + coord_flip() + guides(fill = FALSE) +
+        xlab("Group") + ylab("Density") + ggtitle("Distribution of Group")
+
+#plot events
+hasEvents = summarise(group_by(train, has_events),count = n())
+hasEvents$density = hasEvents$count / sum(hasEvents$count)
+hasEventsPlot = ggplot(data = hasEvents, aes(x=has_events, y=density)) + 
+        histBarGeom + coord_flip() + guides(fill=FALSE) +
+        xlab("Has Events") + ylab("Density") + ggtitle("Distribution of Events")
+multiplot(genderPlot,ageHist,groupPlot,hasEventsPlot,cols = 2)
+
+
+```

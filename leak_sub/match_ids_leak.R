@@ -16,9 +16,9 @@ source('mlogloss.R')
 ## load data
 load('./leak_sub/input/train_leak.RData')
 load('./leak_sub/input/test_leak.RData')
-load('./danijel/input/device.RData')
-load('./danijel/input/events.RData')
-load('./danijel/input/app_events.RData')
+load('./input/device.RData')
+load('./input/events.RData')
+load('./input/app_events.RData')
 
 ## merge train and test
 train$is_train = 1
@@ -80,7 +80,7 @@ thresholds = c(200, 150, 100)
 
 
 for(i in 1:3){
-  
+
   if(i == 1){
     train_sub = train[nruns >= n[i],]
     test_sub = test[nruns >= n[i],]
