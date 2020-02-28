@@ -1,0 +1,16 @@
+numpy~=1.18
+pandas~=1.0
+# scipy==1.1.0
+scikit-learn~=0.22
+# keras==2.2.4
+# tensorflow==1.12
+lightgbm~=2.3
+xgboost~=1.0
+matplotlib==3.1.3
+seaborn~=0.10
+numexpr~=2.7
+ipython
+pdbpp
+pytest
+jupyter
+jupyterlab
