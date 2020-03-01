@@ -1,0 +1,190 @@
+---
+title: "Conditional probability trick"
+output:
+  slidy_presentation: default
+  ioslides_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Conditional probability trick
+
+We know that Age and Gender are different concepts, but as the problem was designed, doesn't. But we can shape the problem using conditional probability: 
+
+Insted of predictiong directly on the 12 groups, we can create 2 models:
+
+1. Predict the probability of gender
+  Train a logistic regression model with Gender as independent variable (Male/Female)
+  
+2. Use gender as additional feature and predict the probability of age groups
+  Use the gender in the train set 
+
+ Using the definition of conditional probability, we combine the predictions for gender and age groups to get the probability for each group:
+
+## Combining predictions
+
+- For female:
+$P(A_i, F) = P(A_i| F) P(F)$ for $i = 1,\dots,6$
+
+- And for male:
+$P(A_i, M) = P(A_i| M) P(M)$ for $i = 1,\dots,6$,
+
+where $A_i$ denote the age groups 1 to 6, and $F$ and $M$ denote female and male, respectively.
+
+
+
+
+```{r preparation, include=FALSE}
+rm(list = ls(all = TRUE))
+knitr::opts_chunk$set(echo = FALSE)
+options(scipen = 999)
+
+## load libraries
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(xgboost)
+library(Matrix)
+
+## load functions
+source('../danijel/mlogloss.R')
+# source('../danijel/nsmallest.R')
+
+
+## load data
+load('../danijel/input/train.RData')
+load('../danijel/input/test.RData')
+load('../danijel/input/device.RData')
+load('../danijel/input/events.RData')
+load('../danijel/input/app_events.RData')
+
+## merge train and test
+train$is_train = 1
+# train$fold5 = NULL
+# train$fold10 = NULL
+test$gender = NA
+test$age = NA
+test$group = NA
+test$is_train = 0
+tr_te = rbind(train, test)
+
+## merging data
+tr_te = merge(tr_te, device, by = 'device_id', all.x = TRUE)
+app_events = merge(app_events, events[,.(event_id, device_id)], by = 'event_id', all.x = TRUE)
+
+## create numeric features
+tr_te$group = as.numeric(factor(tr_te$group)) - 1
+tr_te$gender = ifelse(tr_te$gender == 'F', 0, 1)
+tr_te$phone_brand = as.numeric(factor(tr_te$phone_brand))
+tr_te$device_model = as.numeric(factor(tr_te$device_model))
+
+## new features
+tr_te$has_events = ifelse(tr_te$device_id %in% app_events$device_id, 1, 0)
+set.seed(111)
+n_rounds = 10
+gc()
+
+```
+
+## Shaping the data data
+
+```{r data_2sm, echo = TRUE}
+## age group variable
+tr_te$age_group = ifelse(
+  tr_te$gender == 0,
+  as.numeric(cut(tr_te$age, c(-Inf, 23, 26, 28, 32, 42, Inf))),
+  as.numeric(cut(tr_te$age, c(-Inf, 22, 26, 28, 31, 38, Inf)))
+) - 1
+
+train = tr_te[is_train == 1,]
+test = tr_te[is_train == 0 & has_events == 0,]
+rm(tr_te, events, app_events)
+
+cols = c('device_id','phone_brand', 'device_model', 'has_events', 'gender', 'age_group')
+```
+
+```{r print_data, echo=TRUE}
+train$age_group = ifelse(
+  train$gender == 0,
+  as.numeric(cut(train$age, c(-Inf, 23, 26, 28, 32, 42, Inf))),
+  as.numeric(cut(train$age, c(-Inf, 22, 26, 28, 31, 38, Inf)))
+) - 1
+
+print(head(train[, cols, with = FALSE], 5))
+print(head(test[, cols, with = FALSE], 3))
+```
+
+## Logistic regression for Gender
+
+```{r model1_gender, echo = TRUE}
+features1 = c('phone_brand', 'device_model', 'has_events')
+
+X_tr = xgb.DMatrix(as.matrix(train[, features1, with = FALSE]), label = train$gender, missing = NA)
+
+param = list(booster            = 'gbtree',
+             objective          = 'reg:logistic',
+             learning_rate      = 0.05,
+             max_depth          = 2,
+             subsample          = 0.8,
+             colsample_bytree   = 0.8)
+
+model1_gender = xgb.train(
+  params                 = param,
+  data                   = X_tr,
+  nrounds                = n_rounds,
+)
+```
+## Multinomial logisitic regression for 6 age groups
+
+```{r model2_agegroups, echo=TRUE}
+features2 = c('phone_brand', 'device_model', 'has_events', 'gender')
+X_tr = xgb.DMatrix(as.matrix(train[, features2, with = FALSE]), label = train$age_group, missing = NA)
+
+param = list(booster            = 'gbtree',
+             objective          = 'multi:softprob',
+             num_class          = 6,
+             learning_rate      = 0.05,
+             max_depth          = 7,
+             subsample          = 0.8,
+             colsample_bytree   = 0.8)
+  
+model2_age_group = xgb.train(
+  params                 = param,
+  data                   = X_tr,
+  nrounds                = n_rounds,
+)
+```
+## How to obtain the predictions for Test
+
+
+```{r models_predict, echo = TRUE}
+p = predict(model1_gender, as.matrix(test[, features1, with = FALSE]))
+p_gender = cbind(1-p, p)
+
+idx = rep(1:nrow(test), each = 2)
+test_mod = test[idx,]
+test_mod$gender = rep(0:1, nrow(test))  
+
+p_age_group = matrix(
+  predict(
+    model2_age_group,
+    as.matrix(test_mod[, features2, with = FALSE])
+  ),
+  ncol = 12,
+  byrow = TRUE
+)
+
+p_group = cbind(p_age_group[,1:6] / rowSums(p_age_group[,1:6]) * p_gender[,1],
+                p_age_group[,7:12] / rowSums(p_age_group[,7:12]) * p_gender[,2])
+
+## save predictions
+submit_df = data.frame(cbind(test$device_id, p_group))
+colnames(submit_df) = c(
+  'device_id', 'F23-', 'F24-26','F27-28','F29-32', 'F33-42', 'F43+', 
+  'M22-', 'M23-26', 'M27-28', 'M29-31', 'M32-38', 'M39+')  
+head(submit_df)
+```

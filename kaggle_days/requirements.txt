@@ -1,9 +1,12 @@
 numpy~=1.18
 pandas~=1.0
 # scipy==1.1.0
+scipy~=1.4
 scikit-learn~=0.22
 # keras==2.2.4
+keras~=2.3
 # tensorflow==1.12
+tensorflow~=1.14
 lightgbm~=2.3
 xgboost~=1.0
 matplotlib==3.1.3
@@ -14,3 +17,10 @@ pdbpp
 pytest
 jupyter
 jupyterlab
+
+# experimental:
+cython~=0.29
+word2vec~=0.10
+numba~=0.48
+dask[complete]~=2.10
+line-profiler~=3.0.2
