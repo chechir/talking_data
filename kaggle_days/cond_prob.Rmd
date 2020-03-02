@@ -40,6 +40,8 @@ where $A_i$ denote the age groups 1 to 6, and $F$ and $M$ denote female and male
 rm(list = ls(all = TRUE))
 knitr::opts_chunk$set(echo = FALSE)
 options(scipen = 999)
+# install.packages("xgboost")
+# install.packages("Matrix")
 
 ## load libraries
 library(data.table)
@@ -52,15 +54,15 @@ library(Matrix)
 
 ## load functions
 source('../danijel/mlogloss.R')
-# source('../danijel/nsmallest.R')
 
 
 ## load data
-load('../danijel/input/train.RData')
-load('../danijel/input/test.RData')
-load('../danijel/input/device.RData')
-load('../danijel/input/events.RData')
-load('../danijel/input/app_events.RData')
+### It needs to run danijel data preparation first: create_rdata.R (see danijel folder)
+load('./input/train.RData')
+load('./input/test.RData')
+load('./input/device.RData')
+load('./input/events.RData')
+load('./input/app_events.RData')
 
 ## merge train and test
 train$is_train = 1
@@ -78,7 +80,7 @@ app_events = merge(app_events, events[,.(event_id, device_id)], by = 'event_id',
 
 ## create numeric features
 tr_te$group = as.numeric(factor(tr_te$group)) - 1
-tr_te$gender = ifelse(tr_te$gender == 'F', 0, 1)
+# tr_te$gender = ifelse(tr_te$gender == 'F', 0, 1)
 tr_te$phone_brand = as.numeric(factor(tr_te$phone_brand))
 tr_te$device_model = as.numeric(factor(tr_te$device_model))
 
@@ -90,10 +92,11 @@ gc()
 
 ```
 
-## Shaping the data data
+## Shaping the data 
 
 ```{r data_2sm, echo = TRUE}
 ## age group variable
+tr_te$gender = ifelse(tr_te$gender == 'F', 0, 1)
 tr_te$age_group = ifelse(
   tr_te$gender == 0,
   as.numeric(cut(tr_te$age, c(-Inf, 23, 26, 28, 32, 42, Inf))),
@@ -166,14 +169,11 @@ p = predict(model1_gender, as.matrix(test[, features1, with = FALSE]))
 p_gender = cbind(1-p, p)
 
 idx = rep(1:nrow(test), each = 2)
-test_mod = test[idx,]
-test_mod$gender = rep(0:1, nrow(test))  
+test_hermaphrodite = test[idx,]
+test_hermaphrodite$gender = rep(0:1, nrow(test))  
 
 p_age_group = matrix(
-  predict(
-    model2_age_group,
-    as.matrix(test_mod[, features2, with = FALSE])
-  ),
+  predict(model2_age_group, as.matrix(test_hermaphrodite[, features2, with = FALSE])),
   ncol = 12,
   byrow = TRUE
 )
@@ -181,10 +181,31 @@ p_age_group = matrix(
 p_group = cbind(p_age_group[,1:6] / rowSums(p_age_group[,1:6]) * p_gender[,1],
                 p_age_group[,7:12] / rowSums(p_age_group[,7:12]) * p_gender[,2])
 
+
+```
+
+```{r p_gender, echo = TRUE}
+head(p_gender)
+```
+
+```{r idx, echo = TRUE}
+head(idx, 10)
+```
+```{r hermaphrodite, echo = TRUE}
+head(test_hermaphrodite[, c('device_id', features2), with=FALSE])
+```
+
+```{r p_age_groups, echo = TRUE}
+head(p_age_group)
+```
+```{r p_groups, echo = TRUE}
+head(p_group)
+```
+
 ## save predictions
+```{r save_preds, echo = TRUE}
 submit_df = data.frame(cbind(test$device_id, p_group))
 colnames(submit_df) = c(
   'device_id', 'F23-', 'F24-26','F27-28','F29-32', 'F33-42', 'F43+', 
-  'M22-', 'M23-26', 'M27-28', 'M29-31', 'M32-38', 'M39+')  
-head(submit_df)
+  'M22-', 'M23-26', 'M27-28', 'M29-31', 'M32-38', 'M39+')
 ```
