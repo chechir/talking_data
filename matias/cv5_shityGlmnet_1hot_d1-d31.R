@@ -1,5 +1,12 @@
 rm(list=ls());gc()
-library(dtplyr); library(Matrix); library(xgboost); library(data.table)
+# install.packages("dtplyr")
+# install.packages("Matrix")
+# install.packages("data.table")
+# install.packages("caret")
+# install.packages("glmnet")
+# install.packages("Metrics")
+# install.packages("bit64")
+library(dtplyr); library(Matrix); library(data.table)
 library(caret); library(glmnet);  library(Metrics); library(bit64)
 myseed=718
 
@@ -20,8 +27,7 @@ mlogloss = function(actual, pred_m, eps = 1e-15){
 }
 
 set.seed(myseed)
-#install.packages("dtplyr")
-#install.packages("doParallel")
+
 # library(doParallel)
 # registerDoParallel(4)
 

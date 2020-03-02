@@ -1,2 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# R stuff
+*.Rhistory
+*.Rproj
+*.Rproj.user/
+
+# vim
+*.swp
+
+# virtual enviroment folder
+*/venv/
+
+# jupyter stuff
+*/.ipynb_checkpoints/
+
+# data folders
+*/input/
 input/
-.Rproj.user
